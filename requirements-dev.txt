@@ -1,0 +1,6 @@
+fastapi==0.61.2
+Flask==1.1.2
+Janome==0.4.1
+pydantic==1.7.2
+pytest==6.1.2
+uvicorn==0.12.3
