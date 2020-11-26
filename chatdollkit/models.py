@@ -107,9 +107,10 @@ class AnimatedVoiceRequest(BaseModel):
 
 # Dialog
 class RequestType:
-    Voice = 0
-    Camera = 1
-    QRCode = 2
+    Undecided = 0
+    Voice = 1
+    Camera = 2
+    QRCode = 3
 
 
 class Priority:
