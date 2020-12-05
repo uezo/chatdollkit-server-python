@@ -184,7 +184,7 @@ class Request(BaseModel):
     Id: str
     Type: int
     Timestamp: datetime
-    User: User
+    User: Optional[User]
     Text: Optional[str]
     Payloads: Any
     Intent: Optional[str]

@@ -9,28 +9,28 @@ class PrompterBase:
         self.debug = debug
 
     def execute(self, http_request):
-        _, context, _ = \
+        request, context, _ = \
             self.connector.parse_request(http_request)
         response = Response(Id=context.Id)
 
         try:
-            self.get_prompt(context, response)
-            return self.connector.make_response(None, context, response)
+            self.get_prompt(request, context, response)
+            return self.connector.make_response(request, context, response)
 
         except Exception as ex:
-            return self.connector.make_error_response(None, context, ex)
+            return self.connector.make_error_response(request, context, ex)
 
     async def execute_async(self, http_request):
-        _, context, _ = \
+        request, context, _ = \
             await self.connector.parse_request(http_request)
         response = Response(Id=context.Id)
 
         try:
             await self.get_prompt_async(context, response)
-            return self.connector.make_response(None, context, response)
+            return self.connector.make_response(request, context, response)
 
         except Exception as ex:
-            return self.connector.make_error_response(None, context, ex)
+            return self.connector.make_error_response(request, context, ex)
 
     def get_prompt(self, request, context):
         pass
