@@ -199,8 +199,16 @@ class Response(BaseModel):
     Id: str
     Timestamp: datetime = datetime.utcnow()
     Text: Optional[str]
-    AnimatedVoiceRequest: AnimatedVoiceRequest = AnimatedVoiceRequest()
+    AnimatedVoiceRequests: List[AnimatedVoiceRequest] = [AnimatedVoiceRequest()]
     Payloads: Optional[str]
+
+    @property
+    def AnimatedVoiceRequest(self):
+        return self.AnimatedVoiceRequests[-1]
+
+    @AnimatedVoiceRequest.setter
+    def AnimatedVoiceRequest(self, value):
+        self.AnimatedVoiceRequests[-1] = value
 
     def AddVoice(self, Name, PreGap=0.0, PostGap=0.0, AsNewFrame=False):
         self.AnimatedVoiceRequest.AddVoice(Name, PreGap, PostGap, AsNewFrame)
