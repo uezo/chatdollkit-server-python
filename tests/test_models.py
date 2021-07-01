@@ -1,9 +1,14 @@
 import sys
 import os
 sys.path.append(os.pardir)
-from chatdollkit import (
+from uuid import uuid4
+from chatdollkit.models import (
     AnimatedVoiceRequest,
-    TTSConfiguration
+    ChatdollKitException,
+    Response,
+    TTSConfiguration,
+    VoiceSource,
+    ApiResponseBase
 )
 
 
@@ -166,3 +171,55 @@ def test_add_voice_animation_face():
     assert req.AnimatedVoices[1].Animations["Upper Body"][1].Name == "anim_14"
     assert req.AnimatedVoices[1].Faces[0].Name == "face_11"
     assert req.AnimatedVoices[1].Faces[1].Name == "face_12"
+
+
+def test_tesponse():
+    resp = Response(Id="_")
+
+    resp.AddVoice("local_voice")
+    resp.AddVoiceTTS("tts_voice")
+    resp.AddVoiceWeb("http://web_voice")
+    resp.AddAnimation("walk")
+    resp.AddFace("smile")
+    avreq = resp.AnimatedVoiceRequest
+    assert avreq.AnimatedVoices[0].Voices[0].Name == "local_voice"
+    assert avreq.AnimatedVoices[0].Voices[0].Source == VoiceSource.Local
+    assert avreq.AnimatedVoices[0].Voices[1].Text == "tts_voice"
+    assert avreq.AnimatedVoices[0].Voices[1].Source == VoiceSource.TTS
+    assert avreq.AnimatedVoices[0].Voices[2].Url == "http://web_voice"
+    assert avreq.AnimatedVoices[0].Voices[2].Source == VoiceSource.Web
+    assert avreq.AnimatedVoices[0].Animations["Base Layer"][0].Name == "walk"
+    assert avreq.AnimatedVoices[0].Faces[0].Name == "smile"
+
+
+def test_chatdollkit_exception():
+    cex1 = ChatdollKitException()
+    assert cex1.error_code == "0000"
+    assert cex1.message == "Error"
+
+    cex2 = ChatdollKitException(
+        error_code="1234",
+        message="error_message"
+    )
+    assert cex2.error_code == "1234"
+    assert cex2.message == "error_message"
+    assert str(cex2) == "error_message"
+
+
+def test_api_response_base():
+    ex = Exception("default exception")
+
+    api_response1 = ApiResponseBase.from_exception(ex)
+    assert api_response1.Error.Code == "E9999"
+    assert api_response1.Error.Message == "Unexpected error"
+
+    api_response2 = ApiResponseBase.from_exception(ex, True)
+    assert api_response2.Error.Code == "E9999"
+    assert api_response2.Error.Message == "Unexpected error"
+    assert api_response2.Error.Detail.startswith("default exception\n")
+
+    cex = ChatdollKitException(error_code="CE1234", message="cdk exception")
+    api_response3 = ApiResponseBase.from_exception(cex, True)
+    assert api_response3.Error.Code == "CE1234"
+    assert api_response3.Error.Message == "cdk exception"
+    assert api_response3.Error.Detail.startswith("cdk exception\n")
