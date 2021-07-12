@@ -7,6 +7,7 @@ from flask import (
 )
 from chatdollkit.models import (
     ApiPromptRequest, ApiPromptResponse,
+    ApiSkillsResponse,
     ApiIntentRequest, ApiIntentResponse,
     ApiSkillRequest, ApiSkillResponse,
     SkillNotFoundException
@@ -40,6 +41,23 @@ def prompt():
             ApiPromptResponse.from_exception(
                 ex, current_app.chatdoll_app.debug)
         return make_response(prompt_response.json(), 500)
+
+
+@bp.route("/skills", methods=["GET"])
+def skills():
+    try:
+        skills_response = ApiSkillsResponse(
+            SkillNames=[s.topic for s in current_app.chatdoll_app.skills]
+        )
+        return make_response(skills_response.json(), 200)
+
+    except Exception as ex:
+        current_app.logger.error(
+            f"Error at skills: {str(ex)}\n{traceback.format_exc()}")
+        skills_response = \
+            ApiSkillsResponse.from_exception(
+                ex, current_app.chatdoll_app.debug)
+        return make_response(skills_response.json(), 500)
 
 
 @bp.route("/intent", methods=["POST"])

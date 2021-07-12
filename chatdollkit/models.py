@@ -304,6 +304,10 @@ class ApiPromptResponse(ApiResponseBase):
     State: Optional[State]
 
 
+class ApiSkillsResponse(ApiResponseBase):
+    SkillNames: List[str]
+
+
 class ApiIntentRequest(ApiRequestBase):
     pass
 
