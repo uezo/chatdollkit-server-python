@@ -134,7 +134,7 @@ class Topic(BaseModel):
 class State(BaseModel):
     Id: str
     UserId: str
-    Timestamp: datetime
+    UpdatedAt: datetime
     IsNew: bool
     Topic: Topic
     Data: dict
@@ -195,7 +195,7 @@ class IntentExtractionResult(BaseModel):
 class Request(BaseModel):
     Id: str
     Type: int
-    Timestamp: datetime
+    CreatedAt: datetime
     User: Optional[User]
     Text: Optional[str]
     Payloads: Any
@@ -207,7 +207,7 @@ class Request(BaseModel):
 
 class Response(BaseModel):
     Id: str
-    Timestamp: datetime = datetime.utcnow()
+    CreatedAt: datetime = datetime.utcnow()
     Text: Optional[str]
     AnimatedVoiceRequests: List[AnimatedVoiceRequest] = [AnimatedVoiceRequest()]
     Payloads: Optional[str]
