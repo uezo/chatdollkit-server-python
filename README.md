@@ -1,6 +1,6 @@
 # ChatdollKit Server SDK for Python
 
-SDK to create backend APIs for ChatdollKit. See also 👉 [ChatdollKit](https://github.com/uezo/ChatdollKit)
+SDK to create remote skill server for ChatdollKit. See also 👉 [ChatdollKit](https://github.com/uezo/ChatdollKit)
 
 [🇯🇵日本語のREADMEはこちら](https://github.com/uezo/chatdollkit-dialog-python/blob/master/README.ja.md)
 
@@ -25,69 +25,99 @@ $ pip install fastapi uvicorn
 
 # Quick start
 
+## Server side
+
 Run example API server that just echo what user says.
 
 ```bash
-$ python flaskapp.py
+$ python run_flask.py
 ```
 
-On Unity, attach `HttpDialogRouter` and `HttpPrompter` to your 3D model and configure like below:
+Or
 
-- Intent Extractor Uri: `http://localhost:12345/chatdollkit/intent`
-- Dialog Processor Uri Base: `http://localhost:12345/chatdollkit/dialog`
-- Prompter Uri: `http://localhost:12345/chatdollkit/prompter`
-- Ping Uri: `http://localhost:12345/chatdollkit/ping`
+```bash
+$ uvicorn run_fastapi:app --port 12345 --reload
+```
 
-NOTE: Text-to-Speech service is required
+## Client side
 
-Run your Chatdoll app and start conversation. Your 3D model will echo what you say.
+See [ChatdollKit Documentation > Setup Skill client (ChatdollKit device)](https://github.com/uezo/ChatdollKit/blob/master/manual.md#setup-skill-client-chatdollkit-device) to use `Examples/SkillServer`.
+
+If you want to run skill server on host other than localhost configure URLs on the inspector of `HttpSkillRouter` and `HttpPrompter`.
+
+After setting up both server and client, run your Chatdoll app and start conversation. Your 3D model will echo what you say.
 
 
-# Create your own dialog
+# Create your own Skill Server
 
-Create classes that extend `PrompterBase`, `IntentExtractorBase`, and `DialogProcessorBase` and override their methods.
+Basically Skill(s), Server application and Entrypoint are required to create your Skill Server as following chapters.
+
+First of all, make `allinone.py` and import required libraries.
 
 ```python
-class MyPrompter(PrompterBase):
-    def get_prompt(self, context, response):
-        response.AddVoiceTTS("May I help you?")
-
-class MyIntentExtractor(IntentExtractorBase):
-    def extract_intent(self, request, context):
-        # define conditions to decide intent
-        if ("weather" in request.Text):
-            request.Intent = "weather"
-        elif ("translation" in request.Text):
-            request.Intent = "translation"
-        else:
-            request.Intent = "chat"
-            request.IntentPriority = Priority.Low
-
-class WeatherDialog(DialogProcessorBase):
-    def process(self, request, context, response):
-        weather = get_weather() # getting weather
-        response.AddVoiceTTS(
-            f"It's {weather} today.")
+from flask import Flask
+from chatdollkit.app import SkillBase, AppBase
+from chatdollkit.models import (
+    Request, Response, State, IntentExtractionResult, Intent
+)
+from chatdollkit.controllers.flask_controller import bp as api_bp
 ```
 
-If you use FastAPI or some application frameworks that support async, override `get_prompt_async`, `extract_intent_async` and `process_async` instead.
+## 1. Skill
 
-After that configure app with these classes.
+Make `EchoSkill` class that extends `SkillBase` and implement `process` methods to return response that includes a Text-to-Speech voice request.
 
 ```python
-dialog_classes = {
-    "weather": WeatherDialog,
-    "translation": TranslationDialog,
-    "chat": ChatDialog
-}
-FlaskConnector.configure_app(
-    app, MyIntentExtractor, dialog_classes, MyPrompter, debug=True)
+class EchoSkill(SkillBase):
+    topic = "echo"
+
+    def process(self, request: Request, state: State) -> Response:
+        # Just echo
+        resp = Response(Id=request.Id)
+        resp.AddVoiceTTS(request.Text)
+        return resp
 ```
+
+## 2. Server application
+
+Make `MyApp` that extends `AppBase` and implement `get_prompt` methods that requires voice input to user and `extract_intent` to route to `EchoSkill`.
+
+```python
+class MyApp(AppBase):
+    # Register skill(s)
+    skills = [EchoSkill]
+
+    def get_prompt(self, request: Request, state: State) -> Response:
+        # Return prompt message
+        resp = Response(Id="_" if request is None else request.Id)
+        resp.AddVoiceTTS("This prompt is from server. Please say something.")
+        return resp
+
+    def extract_intent(self, request: Request, state: State) -> IntentExtractionResult:
+        # Always extract Echo intent
+        return IntentExtractionResult(Intent=Intent(Name=EchoSkill.topic))
+```
+
+## 3. Application entry point
+
+Lastly, Add the instance of `MyApp` to Flask application and register API controller blueprint to app.
+
+```python
+# Create Flask app
+app = Flask(__name__)
+# Create ChatdollKit server app and set it to Flask application
+app.chatdoll_app = MyApp(app.logger, True)
+# Register API controller
+app.register_blueprint(api_bp)
+
+if __name__ == "__main__":
+    # Start API
+    app.run(port="12345", debug=True)
+```
+
+See the example if you want to create FastAPI-based skill server.
+
 
 # Use other application framework
 
-To use application framework other than Flask and FastAPI, create and use connector class that extends `ConnectorBase` and override these methods:
-
-- `parse_request` : convert HTTP request object to internal api objects
-- `make_response`: convert internal api objects to HTTP response
-- `make_error_response`: convert internal api objects to HTTP response with error info
+To use application framework other than Flask and FastAPI, create controller that handles http request from ChatdollKit client by your self. You can reuse Skill, Server application and models. See `chatdollkit.controllers.flask_controller.py` or `fastapi_controller.py`.

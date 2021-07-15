@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime
 from pydantic import BaseModel
 from pydantic.typing import Optional, List, Dict, Any
@@ -124,17 +125,16 @@ class Priority:
 class Topic(BaseModel):
     Name: Optional[str]
     Status: Optional[str]
-    IsNew: bool
-    ContinueTopic: bool
-    Previous: Any
+    IsFirstTurn: bool
+    IsFinished: bool
     Priority: int
     RequiredRequestType: int
 
 
-class Context(BaseModel):
+class State(BaseModel):
     Id: str
     UserId: str
-    Timestamp: datetime
+    UpdatedAt: datetime
     IsNew: bool
     Topic: Topic
     Data: dict
@@ -146,6 +146,12 @@ class User(BaseModel):
     Name: Optional[str]
     Nickname: Optional[str]
     Data: dict
+
+
+class Intent(BaseModel):
+    Name: Optional[str]
+    Priority: int = Priority.Normal
+    IsAdhoc: bool = False
 
 
 class WordNode(BaseModel):
@@ -180,24 +186,28 @@ class WordNode(BaseModel):
         return words
 
 
+class IntentExtractionResult(BaseModel):
+    Intent: Optional[Intent]
+    Entities: dict = {}
+    Words: List[WordNode] = []
+
+
 class Request(BaseModel):
     Id: str
     Type: int
-    Timestamp: datetime
+    CreatedAt: datetime
     User: Optional[User]
     Text: Optional[str]
     Payloads: Any
-    Intent: Optional[str]
-    IntentPriority: int
+    Intent: Optional[Intent]
     Entities: dict
     Words: Optional[List[WordNode]]
-    IsAdhoc: bool
     IsCanceled: bool
 
 
 class Response(BaseModel):
     Id: str
-    Timestamp: datetime = datetime.utcnow()
+    CreatedAt: datetime = datetime.utcnow()
     Text: Optional[str]
     AnimatedVoiceRequests: List[AnimatedVoiceRequest] = [AnimatedVoiceRequest()]
     Payloads: Optional[str]
@@ -206,9 +216,10 @@ class Response(BaseModel):
     def AnimatedVoiceRequest(self):
         return self.AnimatedVoiceRequests[-1]
 
-    @AnimatedVoiceRequest.setter
-    def AnimatedVoiceRequest(self, value):
-        self.AnimatedVoiceRequests[-1] = value
+    # MEMO: setter for property doen't work with Pydantic
+    # @AnimatedVoiceRequest.setter
+    # def AnimatedVoiceRequest(self, value):
+    #     self.AnimatedVoiceRequests[-1] = value
 
     def AddVoice(self, Name, PreGap=0.0, PostGap=0.0, AsNewFrame=False):
         self.AnimatedVoiceRequest.AddVoice(Name, PreGap, PostGap, AsNewFrame)
@@ -236,33 +247,80 @@ class Response(BaseModel):
             Name, Duration, Description, AsNewFrame)
 
 
-# API
-class ApiRequest(BaseModel):
-    Request: Optional[Request]
-    Context: Context
-    PreProcess: bool = False
-
-
-class ApiError(BaseModel):
-    Code: str
-    Message: str
-    Detail: Optional[str]
-
-
-class ApiResponse(BaseModel):
-    Request: Optional[Request]
-    Context: Context
-    Response: Optional[Response]
-    Error: Optional[ApiError]
-
-
-class ApiException(Exception):
-    def __init__(self, status_code=500, error_code="0000",
-                 message="Error", root_cause=None):
-        self.status_code = status_code
+# Exception
+class ChatdollKitException(Exception):
+    def __init__(self, error_code="0000", message="Error", root_cause=None):
         self.error_code = error_code
         self.message = message
         self.root_cause = root_cause
 
     def __str__(self):
         return self.message
+
+
+class SkillNotFoundException(ChatdollKitException):
+    pass
+
+
+# API
+class ApiError(BaseModel):
+    Code: str
+    Message: str
+    Detail: Optional[str]
+
+
+class ApiRequestBase(BaseModel):
+    Request: Optional[Request]
+    State: State
+
+
+class ApiResponseBase(BaseModel):
+    Error: Optional[ApiError]
+
+    @classmethod
+    def from_exception(cls, ex: Exception, debug=False):
+        if isinstance(ex, ChatdollKitException):
+            error_code = ex.error_code
+            message = ex.message
+        else:
+            error_code = "E9999"
+            message = "Unexpected error"
+
+        return cls(
+            Error=ApiError(
+                Code=error_code,
+                Message=message,
+                Detail=f"{str(ex)}\n{traceback.format_exc()}"
+                if debug else None
+            ))
+
+
+class ApiPromptRequest(ApiRequestBase):
+    pass
+
+
+class ApiPromptResponse(ApiResponseBase):
+    Response: Optional[Response]
+    State: Optional[State]
+
+
+class ApiSkillsResponse(ApiResponseBase):
+    SkillNames: Optional[List[str]]
+
+
+class ApiIntentRequest(ApiRequestBase):
+    pass
+
+
+class ApiIntentResponse(ApiResponseBase):
+    IntentExtractionResult: Optional[IntentExtractionResult]
+
+
+class ApiSkillRequest(ApiRequestBase):
+    PreProcess: bool = False
+
+
+class ApiSkillResponse(ApiResponseBase):
+    Response: Optional[Response]
+    State: Optional[State]
+    User: Optional[User]

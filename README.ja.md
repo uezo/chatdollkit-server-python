@@ -1,6 +1,6 @@
 # ChatdollKit Server SDK for Python
 
-SDK to create backend APIs for ChatdollKit. See also 👉 [ChatdollKit](https://github.com/uezo/ChatdollKit)
+ChatdollKitのスキルをサーバーで実行するためのSDKです。 See also 👉 [ChatdollKit](https://github.com/uezo/ChatdollKit)
 
 [🇬🇧README in English](https://github.com/uezo/chatdollkit-dialog-python/blob/master/README.md)
 
@@ -25,69 +25,99 @@ $ pip install fastapi uvicorn
 
 # クイックスタート
 
-ユーザーの発話内容をおうむ返しするサンプルAPIサーバを起動します。
+## サーバー側
+
+Exampleに含まれるユーザーの発話内容をおうむ返しするAPIサーバを起動します。
 
 ```bash
-$ python flaskapp.py
+$ python run_flask.py
 ```
 
-続いてUnityで3Dモデルに`HttpDialogRouter`と`HttpPrompter`をアタッチして以下のとおり設定します。
+または
 
-- Intent Extractor Uri: `http://localhost:12345/chatdollkit/intent`
-- Dialog Processor Uri Base: `http://localhost:12345/chatdollkit/dialog`
-- Prompter Uri: `http://localhost:12345/chatdollkit/prompter`
-- Ping Uri: `http://localhost:12345/chatdollkit/ping`
+```bash
+$ uvicorn run_fastapi:app --port 12345 --reload
+```
 
-※Text-to-Speechを利用しますので、関連する設定も行います
+## クライアント側
 
-最後にChatdollアプリを起動して対話を開始してみましょう。3Dモデルがあなたの発話内容をおうむ返ししてくれるはずです。
+[ChatdollKitのマニュアル](https://github.com/uezo/ChatdollKit/blob/master/manual.ja.md#クライアントの準備)を参照ください。ChatdollKitに同梱されているSkillServerのサンプルの利用手順です。
+
+スキルサーバーをlocalhost以外で動かす場合は、`HttpSkillRouter`と`HttpPrompter`のインスペクター上で各種URLを設定してください。
+
+サーバー・クライアント双方の設定が完了したら、最後にChatdollアプリを起動して対話を開始してみましょう。3Dモデルがあなたの発話内容をおうむ返ししてくれるはずです。
 
 
-# 対話処理のカスタマイズ
+# スキルサーバーの作り方
 
-`PrompterBase`、`IntentExtractorBase`、`DialogProcessorBase`を継承したクラスを作って、以下のようにそれぞれのメソッドをオーバーライドして処理を実装します。
+基本的には、スキル、サーバーアプリケーション本体、エントリーポイントを実装していくことで独自のスキルサーバーを作ることができます。
+
+まずは `allinone.py` を作成し、以下の通り必要なライブラリーをインポートしましょう。
 
 ```python
-class MyPrompter(PrompterBase):
-    def get_prompt(self, context, response):
-        response.AddVoiceTTS("May I help you?")
-
-class MyIntentExtractor(IntentExtractorBase):
-    def extract_intent(self, request, context):
-        # define conditions to decide intent
-        if ("weather" in request.Text):
-            request.Intent = "weather"
-        elif ("translation" in request.Text):
-            request.Intent = "translation"
-        else:
-            request.Intent = "chat"
-            request.IntentPriority = Priority.Low
-
-class WeatherDialog(DialogProcessorBase):
-    def process(self, request, context, response):
-        weather = get_weather() # getting weather
-        response.AddVoiceTTS(
-            f"It's {weather} today.")
+from flask import Flask
+from chatdollkit.app import SkillBase, AppBase
+from chatdollkit.models import (
+    Request, Response, State, IntentExtractionResult, Intent
+)
+from chatdollkit.controllers.flask_controller import bp as api_bp
 ```
 
-FastAPIなどの非同期処理をサポートするフレームワークを利用する場合は、上記例のかわりに`get_prompt_async`、`extract_intent_async`、`process_async`をオーバーライドしましょう。
+## 1. スキル
 
-最後に、作ったクラスをアプリケーションに登録すれば利用可能になります。
+`SkillBase` を継承した `EchoSkill` クラスを作成し、 `process` メソッドを実装します。例ではText-to-Speechのボイスを含むレスポンスを返しています。
 
 ```python
-dialog_classes = {
-    "weather": WeatherDialog,
-    "translation": TranslationDialog,
-    "chat": ChatDialog
-}
-FlaskConnector.configure_app(
-    app, MyIntentExtractor, dialog_classes, MyPrompter, debug=True)
+class EchoSkill(SkillBase):
+    topic = "echo"
+
+    def process(self, request: Request, state: State) -> Response:
+        # Just echo
+        resp = Response(Id=request.Id)
+        resp.AddVoiceTTS(request.Text)
+        return resp
 ```
 
-# その他のアプリケーションフレームワークの利用
+## 2. サーバーアプリケーション
 
-FlaskやFastAPI以外を利用する場合、`ConnectorBase`を継承したコネクタクラスを自作して以下のメソッドを実装してください。
+`AppBase` を継承する `MyApp` クラスを作成し、 ユーザーに発話を要求する `get_prompt` メソッドと `EchoSkill` へのルーティングに必要な情報を返す `extract_intent` メソッドを実装します。
 
-- `parse_request` : HTTPリクエストを内部利用のAPI各種オブジェクトに変換
-- `make_response`: 内部利用の各種APIオブジェクトをHTTPレスポンスに変換
-- `make_error_response`: 内部利用の各種APIオブジェクトをHTTPレスポンス（エラー情報つき）に変換
+```python
+class MyApp(AppBase):
+    # Register skill(s)
+    skills = [EchoSkill]
+
+    def get_prompt(self, request: Request, state: State) -> Response:
+        # Return prompt message
+        resp = Response(Id="_" if request is None else request.Id)
+        resp.AddVoiceTTS("This prompt is from server. Please say something.")
+        return resp
+
+    def extract_intent(self, request: Request, state: State) -> IntentExtractionResult:
+        # Always extract Echo intent
+        return IntentExtractionResult(Intent=Intent(Name=EchoSkill.topic))
+```
+
+## 3. アプリケーションエントリーポイント
+
+最後に、作成した `MyApp` のインスタンスをFlaskアプリケーションに生やした上でAPIコントローラーを登録します。
+
+```python
+# Create Flask app
+app = Flask(__name__)
+# Create ChatdollKit server app and set it to Flask application
+app.chatdoll_app = MyApp(app.logger, True)
+# Register API controller
+app.register_blueprint(api_bp)
+
+if __name__ == "__main__":
+    # Start API
+    app.run(port="12345", debug=True)
+```
+
+FastAPIベースのスキルサーバーを作るにはExampleの内容をご確認ください。
+
+
+# 他のアプリケーションサーバーを利用する方法
+
+FlaskまたはFastAPI以外のアプリケーションサーバーを利用するには、ChatdollKitクライアントからのHTTPリクエストのハンドラーを自身で作成してください。スキル、サーバーアプリケーション、モデルはそのまま利用可能です。ハンドルすべきエンドポイント等はサンプルの`chatdollkit.controllers.flask_controller.py`または`fastapi_controller.py`を参照してください。前者が同期、後者が非同期です。

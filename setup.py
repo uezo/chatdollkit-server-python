@@ -11,7 +11,7 @@ setup(
     author_email="uezo@uezo.net",
     maintainer="uezo",
     maintainer_email="uezo@uezo.net",
-    description="SDK to create backend APIs for ChatdollKit.",
+    description="SDK to create remote skill server for ChatdollKit.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     packages=find_packages(exclude=["examples*", "develop*", "tests*"]),
