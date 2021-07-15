@@ -43,23 +43,6 @@ def prompt():
         return make_response(prompt_response.json(), 500)
 
 
-@bp.route("/skills", methods=["GET"])
-def skills():
-    try:
-        skills_response = ApiSkillsResponse(
-            SkillNames=[s.topic for s in current_app.chatdoll_app.skills]
-        )
-        return make_response(skills_response.json(), 200)
-
-    except Exception as ex:
-        current_app.logger.error(
-            f"Error at skills: {str(ex)}\n{traceback.format_exc()}")
-        skills_response = \
-            ApiSkillsResponse.from_exception(
-                ex, current_app.chatdoll_app.debug)
-        return make_response(skills_response.json(), 500)
-
-
 @bp.route("/intent", methods=["POST"])
 def intent():
     try:
@@ -81,7 +64,24 @@ def intent():
         return make_response(intent_response.json(), 500)
 
 
-@bp.route("/skill/<skill_name>", methods=["POST"])
+@bp.route("/skills", methods=["GET"])
+def skills():
+    try:
+        skills_response = ApiSkillsResponse(
+            SkillNames=[s.topic for s in current_app.chatdoll_app.skills]
+        )
+        return make_response(skills_response.json(), 200)
+
+    except Exception as ex:
+        current_app.logger.error(
+            f"Error at skills: {str(ex)}\n{traceback.format_exc()}")
+        skills_response = \
+            ApiSkillsResponse.from_exception(
+                ex, current_app.chatdoll_app.debug)
+        return make_response(skills_response.json(), 500)
+
+
+@bp.route("/skills/<skill_name>", methods=["POST"])
 def skill(skill_name):
     try:
         skill_request = ApiSkillRequest(**flask_request.json)

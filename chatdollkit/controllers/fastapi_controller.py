@@ -41,27 +41,6 @@ async def prompt(fastapi_request: Request):
             jsonable_encoder(prompt_response), status_code=500)
 
 
-@router.get("/skills")
-async def skills(fastapi_request: Request):
-    try:
-        skills_response = ApiSkillsResponse(
-            SkillNames=[
-                s.topic for s in fastapi_request.app.chatdoll_app.skills
-            ]
-        )
-        return JSONResponse(
-            jsonable_encoder(skills_response), status_code=200)
-
-    except Exception as ex:
-        fastapi_request.app.chatdoll_app.logger.error(
-            f"Error at skills: {str(ex)}\n{traceback.format_exc()}")
-        skills_response = \
-            ApiSkillsResponse.from_exception(
-                ex, fastapi_request.app.chatdoll_app.debug)
-        return JSONResponse(
-            jsonable_encoder(skills_response), status_code=500)
-
-
 @router.post("/intent")
 async def intent(fastapi_request: Request):
     try:
@@ -86,7 +65,28 @@ async def intent(fastapi_request: Request):
             jsonable_encoder(intent_response), status_code=500)
 
 
-@router.post("/skill/{skill_name}")
+@router.get("/skills")
+async def skills(fastapi_request: Request):
+    try:
+        skills_response = ApiSkillsResponse(
+            SkillNames=[
+                s.topic for s in fastapi_request.app.chatdoll_app.skills
+            ]
+        )
+        return JSONResponse(
+            jsonable_encoder(skills_response), status_code=200)
+
+    except Exception as ex:
+        fastapi_request.app.chatdoll_app.logger.error(
+            f"Error at skills: {str(ex)}\n{traceback.format_exc()}")
+        skills_response = \
+            ApiSkillsResponse.from_exception(
+                ex, fastapi_request.app.chatdoll_app.debug)
+        return JSONResponse(
+            jsonable_encoder(skills_response), status_code=500)
+
+
+@router.post("/skills/{skill_name}")
 async def skill(fastapi_request: Request, skill_name: str):
     try:
         skill_request = ApiSkillRequest(**(await fastapi_request.json()))
