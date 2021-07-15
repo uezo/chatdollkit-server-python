@@ -41,16 +41,11 @@ $ uvicorn run_fastapi:app --port 12345 --reload
 
 ## クライアント側
 
-続いてUnityで3Dモデルに`HttpDialogRouter`と`HttpPrompter`をアタッチして以下のとおり設定します。
+[ChatdollKitのマニュアル](https://github.com/uezo/ChatdollKit/blob/master/manual.ja.md#クライアントの準備)を参照ください。ChatdollKitに同梱されているSkillServerのサンプルの利用手順です。
 
-- Intent Extractor Uri: `http://localhost:12345/intent`
-- Skill Uri Base: `http://localhost:12345/skill`
-- Prompter Uri: `http://localhost:12345/prompt`
-- Ping Uri: `http://localhost:12345/ping`
+スキルサーバーをlocalhost以外で動かす場合は、`HttpSkillRouter`と`HttpPrompter`のインスペクター上で各種URLを設定してください。
 
-※Text-to-Speechを利用しますので、関連する設定も行います
-
-最後にChatdollアプリを起動して対話を開始してみましょう。3Dモデルがあなたの発話内容をおうむ返ししてくれるはずです。
+サーバー・クライアント双方の設定が完了したら、最後にChatdollアプリを起動して対話を開始してみましょう。3Dモデルがあなたの発話内容をおうむ返ししてくれるはずです。
 
 
 # スキルサーバーの作り方

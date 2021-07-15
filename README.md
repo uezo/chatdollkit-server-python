@@ -41,16 +41,11 @@ $ uvicorn run_fastapi:app --port 12345 --reload
 
 ## Client side
 
-On Unity, attach `HttpSkillRouter` and `HttpPrompter` to your 3D model and configure like below:
+See [ChatdollKit Documentation > Setup Skill client (ChatdollKit device)](https://github.com/uezo/ChatdollKit/blob/master/manual.md#setup-skill-client-chatdollkit-device) to use `Examples/SkillServer`.
 
-- Intent Extractor Uri: `http://localhost:12345/intent`
-- Skill Uri Base: `http://localhost:12345/skill`
-- Prompter Uri: `http://localhost:12345/prompt`
-- Ping Uri: `http://localhost:12345/ping`
+If you want to run skill server on host other than localhost configure URLs on the inspector of `HttpSkillRouter` and `HttpPrompter`.
 
-NOTE: Text-to-Speech service is required
-
-Run your Chatdoll app and start conversation. Your 3D model will echo what you say.
+After setting up both server and client, run your Chatdoll app and start conversation. Your 3D model will echo what you say.
 
 
 # Create your own Skill Server
