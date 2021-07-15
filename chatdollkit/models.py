@@ -305,7 +305,7 @@ class ApiPromptResponse(ApiResponseBase):
 
 
 class ApiSkillsResponse(ApiResponseBase):
-    SkillNames: List[str]
+    SkillNames: Optional[List[str]]
 
 
 class ApiIntentRequest(ApiRequestBase):
